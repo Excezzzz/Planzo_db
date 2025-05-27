@@ -1,4 +1,4 @@
--- name: CreateUser :many
+-- name: CreateTask :many
 INSERT INTO tasks (id, userid, name, task, status)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING id, name, status;

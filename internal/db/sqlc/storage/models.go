@@ -9,6 +9,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Task struct {
+	ID     uuid.UUID
+	Userid pgtype.UUID
+	Name   pgtype.Text
+	Task   pgtype.Text
+	Status pgtype.Bool
+}
+
 type User struct {
 	ID       uuid.UUID
 	Username pgtype.Text

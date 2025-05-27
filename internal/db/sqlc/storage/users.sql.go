@@ -12,12 +12,51 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const changeName = `-- name: ChangeName :exec
+UPDATE users SET name = $2 WHERE id = $1
+`
+
+type ChangeNameParams struct {
+	ID   uuid.UUID
+	Name pgtype.Text
+}
+
+func (q *Queries) ChangeName(ctx context.Context, arg ChangeNameParams) error {
+	_, err := q.db.Exec(ctx, changeName, arg.ID, arg.Name)
+	return err
+}
+
+const changePassword = `-- name: ChangePassword :exec
+UPDATE users SET password = $2 WHERE id = $1
+`
+
+type ChangePasswordParams struct {
+	ID       uuid.UUID
+	Password pgtype.Text
+}
+
+func (q *Queries) ChangePassword(ctx context.Context, arg ChangePasswordParams) error {
+	_, err := q.db.Exec(ctx, changePassword, arg.ID, arg.Password)
+	return err
+}
+
+const changeUsername = `-- name: ChangeUsername :exec
+UPDATE users SET username = $2 WHERE id = $1
+`
+
+type ChangeUsernameParams struct {
+	ID       uuid.UUID
+	Username pgtype.Text
+}
+
+func (q *Queries) ChangeUsername(ctx context.Context, arg ChangeUsernameParams) error {
+	_, err := q.db.Exec(ctx, changeUsername, arg.ID, arg.Username)
+	return err
+}
+
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (
-    username, name, password
-) VALUES (
-    $1, $2, $3
-)
+INSERT INTO users (username, name, password)
+VALUES ($1, $2, $3)
 RETURNING id
 `
 
@@ -32,4 +71,80 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (uuid.UU
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, id)
+	return err
+}
+
+const getPasswordByUsername = `-- name: GetPasswordByUsername :one
+SELECT password FROM users WHERE username = $1
+`
+
+func (q *Queries) GetPasswordByUsername(ctx context.Context, username pgtype.Text) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getPasswordByUsername, username)
+	var password pgtype.Text
+	err := row.Scan(&password)
+	return password, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, username, name, password FROM users WHERE username = $1
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username pgtype.Text) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Name,
+		&i.Password,
+	)
+	return i, err
+}
+
+const getUserNameByID = `-- name: GetUserNameByID :one
+SELECT name FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserNameByID(ctx context.Context, id uuid.UUID) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getUserNameByID, id)
+	var name pgtype.Text
+	err := row.Scan(&name)
+	return name, err
+}
+
+const listUsers = `-- name: ListUsers :many
+SELECT id, username, name, password FROM users
+`
+
+func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.Query(ctx, listUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Name,
+			&i.Password,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
